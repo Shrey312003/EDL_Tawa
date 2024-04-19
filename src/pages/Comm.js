@@ -1,4 +1,4 @@
-import { Box, Button } from "@mui/material";
+import { Box, Button,Typography } from "@mui/material";
 import { useLocation } from "react-router";
 import useFetch from "../hooks/useFetch";
 import { useEffect, useState } from "react";
@@ -14,8 +14,13 @@ const Comm = () => {
     const [ws, setWs] = useState(null);
     const [chartData, setChartData] = useState(null);
     const [newChartData, setNewChartData] = useState([]);
+
     const [x, setX] = useState([]);
     const [y, setY] = useState([]);
+
+    const [new_x,setNew_x]= useState([]);
+    const [new_y,setNew_y]= useState([]);
+    const [new_y2,setNew_y2] = useState([]);
 
     const temp_x = [];
     const temp_y = [];
@@ -43,7 +48,7 @@ const Comm = () => {
             setX(temp_x);
             setY(temp_y);
 
-            console.log(data);
+            // console.log(data);
         }
     }, [data, id]);
 
@@ -66,33 +71,63 @@ const Comm = () => {
         }
     }, [profile]);
 
+    let prev_time = 0;
+    let new_time = 0;
+
+    const [send_data,setSend_data] = useState(null);
+
     useEffect(() => {
         const handleWebSocketMessage = (event) => {
             console.log('Message received:', event.data);
-            // setY([...y, event.data]);
-            // setX([...x, t + 1]);
 
-            const updatedY = [...y];
-            updatedY[t] = event.data;
-            setY(updatedY);
-                
-            setT(t+1);
+            const data = event.data;
 
-            console.log(x);
+            const temp_send_data = data.split(',');
 
-            setNewChartData({
-                labels: [...x],
-                datasets: [
-                    {
-                        label:(profile.title),
-                        fill: false,
-                        lineTension: 0,
-                        backgroundColor: "rgba(0,0,255,1.0)",
-                        borderColor: "black",
-                        data: updatedY
-                    }
-                ]
-            });
+            setSend_data(data.split(','));
+
+            const cur_temp = temp_send_data[0];
+            const req_temp = temp_send_data[1];
+            const time = temp_send_data[2];
+
+            new_time = time;
+
+            console.log(cur_temp, req_temp, time);
+
+            const temp_x = new_x;
+
+            if (new_time != prev_time) {
+                // Add the new data to the state
+                setNew_x(prevX => [...prevX, time]);
+                setNew_y(prevY => [...prevY, cur_temp]);
+                setNew_y2(prevY2 => [...prevY2, req_temp]);
+            }
+
+            // setNew_x(prevX => [...prevX, time]);
+            // setNew_y(prevY => [...prevY, cur_temp]);
+
+            console.log(new_x);
+
+            // if (!new_x.includes(time)) {
+            //     setNew_x(prevX => [...prevX, time]);
+            //     setNew_y(prevY => [...prevY, cur_temp]);
+        
+            //     setNewChartData({
+            //         labels: [...new_x, time],
+            //         datasets: [
+            //             {
+            //                 label: profile.title,
+            //                 fill: false,
+            //                 lineTension: 0,
+            //                 backgroundColor: "rgba(0,0,255,1.0)",
+            //                 borderColor: "black",
+            //                 data: [...new_y, cur_temp]
+            //             }
+            //         ]
+            //     });
+            // }
+
+            prev_time = new_time;
         };
 
         if (ws) {
@@ -105,6 +140,34 @@ const Comm = () => {
             }
         };
     }, [ws, x, y]);
+
+    useEffect(() => {
+        if (profile) { // Check if profile is not null
+            setNewChartData({
+                labels: new_x,
+                datasets: [
+                    {
+                        label: "actual",
+                        fill: false,
+                        lineTension: 0,
+                        backgroundColor: "rgba(0,0,255,1.0)",
+                        borderColor: "black",
+                        data: new_y,
+                        pointRadius: 0, 
+                    },
+                    {
+                        label: "required",
+                        fill: false,
+                        lineTension: 0,
+                        backgroundColor: "rgba(0,0,255,1.0)",
+                        borderColor: "red",
+                        data: new_y2,
+                        pointRadius: 0, 
+                    }
+                ]
+            });
+        }
+    }, [new_x, new_y, profile]);
 
     const handleStart = () => {
         ws.send(sendData);
@@ -125,7 +188,8 @@ const Comm = () => {
     };
 
     const handleConnect = () => {
-        const ws1 = new WebSocket('ws://192.168.250.93/ws');
+        // const ws1 = new WebSocket('ws://192.168.203.93/ws');
+        const ws1 = new WebSocket('ws://192.168.145.93/ws');
         setWs(ws1);
         ws1.onopen = function () {
             setConnect(true);
@@ -142,6 +206,21 @@ const Comm = () => {
         <Box>
             {profile && (
                 <Box>
+                    {send_data && (
+                        <>
+                            <Typography>
+                                Current Temperature:
+                                {send_data[0]}
+                            </Typography>
+
+                            <Typography>
+                                Required Temperature:
+                                {send_data[1]}
+                            </Typography>
+                        </>
+                    )}
+                    
+                    
                     <Button onClick={handleConnect} variant="contained">
                         Connect
                     </Button>
@@ -150,13 +229,14 @@ const Comm = () => {
                             Start
                         </Button>
                     )}
-                    <div style={{margin:"3% 1% 1% 1% "}}>
-                        <LineChart chartData={chartData} />
-                    </div>
+                    {/* <div style={{margin:"3% 1% 1% 1% "}}> */}
+                        {/* <LineChart chartData={chartData} /> */}
+                    {/* </div> */}
                     
-                    <div style={{margin:"3% 1% 1% 1% "}}>   
+                    {/* <div style={{margin:"3% 1% 1% 1% "}}>    */}
                     <LineChart2 chartData={newChartData} />
-                    </div>
+                    <LineChart chartData={chartData} />
+                    {/* </div> */}
                     
                 </Box>
             )}
